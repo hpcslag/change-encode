@@ -1,0 +1,264 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="UTF-8">
+    <title>Encode Converter</title>
+    <style type="text/css">
+      *{
+        font-family: 'Arial'
+      }
+      #dropbox{
+        border: 1px dashed #909090;
+      }
+
+      #dropbox h1{
+        text-align: center;
+        font-weight: 300;
+        color: #909090;
+      }
+
+      #toolbox p{
+        color: #909090;
+      }
+      .select_file_encode, .select_convert_encode{
+        width: 100%;
+      }
+
+      #convert_btn{
+        width: 100%;
+      }
+
+      .button {
+        display: -webkit-box;
+        display: -ms-flexbox;
+        display: flex;
+        overflow: hidden;
+        margin-top: 20px;
+        padding: 12px 12px;
+        cursor: pointer;
+        -webkit-user-select: none;
+           -moz-user-select: none;
+            -ms-user-select: none;
+                user-select: none;
+        -webkit-transition: all 60ms ease-in-out;
+        transition: all 60ms ease-in-out;
+        text-align: center;
+        white-space: nowrap;
+        text-decoration: none !important;
+        text-transform: none;
+        text-transform: capitalize;
+        color: #fff;
+        border: 0 none;
+        border-radius: 4px;
+        font-size: 14px;
+        font-weight: 500;
+        line-height: 1.3;
+        -webkit-appearance: none;
+        -moz-appearance: none;
+        appearance: none;
+        -webkit-box-pack: center;
+            -ms-flex-pack: center;
+                justify-content: center;
+        -webkit-box-align: center;
+            -ms-flex-align: center;
+                align-items: center;
+        -webkit-box-flex: 0;
+            -ms-flex: 0 0 160px;
+                flex: 0 0 160px;
+      }
+      .button:hover {
+        -webkit-transition: all 60ms ease;
+        transition: all 60ms ease;
+        opacity: .85;
+      }
+      .button:active {
+        -webkit-transition: all 60ms ease;
+        transition: all 60ms ease;
+        opacity: .75;
+      }
+      .button:focus {
+        outline: 1px dotted #959595;
+        outline-offset: -4px;
+      }
+
+      .button.-regular {
+        color: #202129;
+        background-color: #edeeee;
+      }
+      .button.-regular:hover {
+        color: #202129;
+        background-color: #e1e2e2;
+        opacity: 1;
+      }
+      .button.-regular:active {
+        background-color: #d5d6d6;
+        opacity: 1;
+      }
+
+      .button.-dark {
+        color: #FFFFFF;
+        background: #333030;
+      }
+      .button.-dark:focus {
+        outline: 1px dotted white;
+        outline-offset: -4px;
+      }
+
+      .button.-green {
+        color: #FFFFFF;
+        background: #3ac569;
+      }
+
+      .button.-blue {
+        color: #FFFFFF;
+        background: #2b90d9;
+      }
+
+      .button.-salmon {
+        color: #FFFFFF;
+        background: #F32C52;
+      }
+
+      .button.-sun {
+        color: #f15c5c;
+        background: #feee7d;
+      }
+
+      .button.-alge {
+        color: #f4f7f7;
+        background: #79a8a9;
+      }
+
+      .button.-flower {
+        color: #FE8CDF;
+        background: #353866;
+      }
+    </style>
+    <link rel="stylesheet" href="./assets/select2.min.css">
+  </head>
+  <body>
+    <div id="dropbox" ondrop="drop_handler(event);" ondragover="dragover_handler(event);" ondragend="dragend_handler(event);">
+      <h1>Drop the file to here<br><br>or<br><br>Click here to select file.</h1>
+    </div>
+    <p id="showDialog" style="display: none;">File is be selected.</p>
+    <div id="toolbox">
+      <p>From Encode:</p>
+      <select class="select_file_encode">
+        <option value="UTF-8">UTF-8</option>
+        <option value="BIG5">BIG5</option>
+      </select>
+      <br>
+      <p>Convert to:</p>
+      <select class="select_convert_encode">
+        <option value="UTF-8">UTF-8</option>
+        <option value="BIG5">BIG5</option>
+      </select>
+      <br>
+    </div>
+    <button class='button -green center' id="convert_btn">Convert!</button>
+    <div class='button -salmon center' id="cancelBtn" style="display: none;">Cancel</div>
+    <script>window.$ = window.jQuery = require('./assets/jquery-2.1.0.js');</script>
+    <script src="./assets/select2.min.js"></script>
+    <script type="text/javascript">
+      const remote = require('electron').remote;
+      const ipc = require('electron').ipcRenderer;
+
+      /*document.getElementById("btn").addEventListener("click", function (e) {
+         var window = remote.getCurrentWindow();
+         window.minimize();
+      });*/
+
+      let fileSelected;
+      document.getElementById("convert_btn").addEventListener("click", function (e) {
+        ipc.send('convert-file', {path:fileSelected.path, fromType:$(".select_file_encode")[0].value, toType:$(".select_convert_encode")[0].value});
+      });
+
+      let sfe;
+      let sce;
+      $(document).ready(function() {
+        sfe = $(".select_file_encode").select2();
+        sce = $(".select_convert_encode").select2();
+      });
+
+      function drop_handler(ev) {
+        console.log("Drop");
+        ev.preventDefault();
+        // If dropped items aren't files, reject them
+        var dt = ev.dataTransfer;
+        if (dt.items) {
+          if(dt.items.length > 1){
+            alert("Can't support multiple file transfer now.");
+            resetStyle();
+            return;
+          }
+          if (dt.items[0].kind == "file") {
+            var f = dt.items[0].getAsFile();
+            handleFile(f);
+            resetStyle();
+            setFile();
+            return;
+          }else{
+            alert("are you sure this is file?");
+            resetStyle();
+            return;
+          }
+        } else {
+          if(dt.files.length > 1){
+            alert("Can't support multiple file transfer now.");
+            resetStyle();
+            return;
+          }
+          handleFile(dt.files[0].name);
+        }
+        resetStyle();
+        setFile();
+      }
+
+      function dragover_handler(ev) {
+        console.log("file is drag over here.");
+
+        setStyle();
+
+        ev.preventDefault();
+      }
+
+      $(document).on('dragleave', function () {
+        resetStyle();
+      });
+
+      function resetStyle(){
+        $("#dropbox").css({'border':'1px dashed #909090'});
+        $("#dropbox h1").css({'color':'#909090'});
+      }
+
+      function setStyle(){
+        $("#dropbox").css({'border':'3px dashed green'});
+        $("#dropbox h1").css({'color':'green'});
+      }
+
+      function setFile(){
+        $("#showDialog").show();
+        $("#dropbox").hide();
+        $("#cancelBtn").show();
+      }
+      function unsetFile(){
+        $("#showDialog").hide();
+        $("#dropbox").show();
+        $("#cancelBtn").hide();
+      }
+      document.getElementById("cancelBtn").addEventListener("click", function (e) {
+        unsetFile();
+      });
+
+      function handleFile(file){
+        fileSelected = file;
+        ipc.send('inside-file', file.path);
+      }
+
+      ipc.on('inside-data-reply', function (event, encoding) {
+        sfe.val(encoding).trigger("change");
+      });
+
+  </script>
+  </body>
+</html>
